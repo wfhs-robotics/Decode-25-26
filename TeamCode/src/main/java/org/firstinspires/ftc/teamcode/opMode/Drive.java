@@ -125,10 +125,10 @@ public class Drive extends OpMode
         double drive = -gamepad1.left_stick_y;
         double turn  =  gamepad1.right_stick_x;
         strafe = gamepad1.left_stick_x;
-        frontLeftPower    = Range.clip(drive + turn - strafe, -1.0, 1.0) ;
-        leftPower    = Range.clip(drive + turn + strafe, -1.0, 1.0) ;
-        rightPower   = Range.clip(drive - turn - strafe, -1.0, 1.0) ;
-        frontRightPower   = Range.clip(drive - turn + strafe, -1.0, 1.0) ;
+        frontLeftPower    = Range.clip(drive *.9 + turn*.9 - strafe*.9, -1.0, 1.0) ;
+        leftPower    = Range.clip(drive*.9 + turn*.9 + strafe*.9, -1.0, 1.0) ;
+        rightPower   = Range.clip(drive*.9 - turn*.9 - strafe*.9, -1.0, 1.0) ;
+        frontRightPower   = Range.clip(drive*.9 - turn*.9 + strafe*.9, -1.0, 1.0) ;
 
 
         // Send calculated power to wheels

@@ -33,9 +33,7 @@ import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 
 /*
@@ -52,21 +50,15 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@TeleOp(name="Drive", group="Iterative OpMode")
+@TeleOp(name="shoot_test", group="Iterative OpMode")
 //@Disabled
-public class Drive extends OpMode
+public class Shoot_test extends OpMode
 {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftDrive = null;
-    private DcMotor rightDrive = null;
-    private  DcMotor leftFrontDrive = null;
-    private DcMotor rightFrontDrive = null;
     private  DcMotor launchLeft = null;
     private  DcMotor launchRight = null;
-    private  DcMotor revolver = null;
-    private  DcMotor intake = null;
-    private Servo wrist = null;
+    private DcMotor intake =null;
     boolean prevA = false;
     boolean prevY = false;
 
@@ -84,21 +76,10 @@ public class Drive extends OpMode
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        leftDrive  = hardwareMap.get(DcMotor.class, "left_drive");
-        rightDrive = hardwareMap.get(DcMotor.class, "right_drive");
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "left_front_drive");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
         intake = hardwareMap.get(DcMotor.class, "intake");
-
-        // To drive forward, most robots need the motor on one side to be reversed, because the axles point in opposite directions.
-        // Pushing the left stick forward MUST make robot go forward. So adjust these two lines based on your first test drive.
-        // Note: The settings here assume direct drive on left and right wheels.  Gear Reduction or 90 Deg drives may require direction flips
-        leftDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightDrive.setDirection(DcMotor.Direction.FORWARD);
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -125,26 +106,10 @@ public class Drive extends OpMode
     @Override
     public void loop() {
         // Setup variables
-        double frontLeftPower;
-        double leftPower;
-        double frontRightPower;
-        double rightPower;
-        double strafe;
         double shoot;
         double Intake;
 
 
-
-        // POV Mode uses left stick to go forward, and right stick to turn.
-        // - This uses basic math to combine motions and is easier to drive straight.
-        //
-        double drive = -gamepad1.left_stick_y;
-        double turn  =  gamepad1.right_stick_x;
-         strafe = gamepad1.left_stick_x;
-        frontLeftPower    = Range.clip(drive *.9 + turn*.9 - strafe*.9, -1.0, 1.0) ;
-        leftPower    = Range.clip(drive*.9 + turn*.9 + strafe*.9, -1.0, 1.0) ;
-        rightPower   = Range.clip(drive*.9 - turn*.9 - strafe*.9, -1.0, 1.0) ;
-        frontRightPower   = Range.clip(drive*.9 - turn*.9 + strafe*.9, -1.0, 1.0) ;
 
         //shoot the artifacts
         if(gamepad2.a && gamepad2.a != prevA)
@@ -161,10 +126,7 @@ public class Drive extends OpMode
 
 
         // Send calculated power to wheels
-        leftDrive.setPower(leftPower);
-        rightDrive.setPower(rightPower);
-        leftFrontDrive.setPower(frontLeftPower);
-        rightFrontDrive.setPower(frontRightPower);
+
         //send power to other motors
         launchLeft.setPower(shoot);
         launchRight.setPower(shoot);
@@ -178,7 +140,7 @@ public class Drive extends OpMode
 
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
+        telemetry.addData("Motors", "left (%.2f), right (%.2f)");
 
 
     }

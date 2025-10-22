@@ -58,7 +58,7 @@ public class Shoot_test extends OpMode
     private ElapsedTime runtime = new ElapsedTime();
     private  DcMotor launchLeft = null;
     private  DcMotor launchRight = null;
-    private DcMotor intake =null;
+   // private DcMotor intake =null;
     boolean prevA = false;
     boolean prevY = false;
 
@@ -79,7 +79,7 @@ public class Shoot_test extends OpMode
 
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
-        intake = hardwareMap.get(DcMotor.class, "intake");
+       // intake = hardwareMap.get(DcMotor.class, "intake");
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -107,30 +107,33 @@ public class Shoot_test extends OpMode
     public void loop() {
         // Setup variables
         double shoot;
-        double Intake;
+        double Speed;
+       // double Intake;
+        Speed=.6;
 
 
 
         //shoot the artifacts
-        if(gamepad2.a && gamepad2.a != prevA)
-            shoot=1;
+        if(gamepad2.a)
+            shoot= Speed;
         else
-            shoot=0;
+            shoot=0.0;
 
         //intake
-        if(gamepad2.y && gamepad2.y != prevY)
-            Intake=1;
+     /*   if(gamepad2.y && gamepad2.y != prevY)
+            Intake=1.0;
         else
-            Intake=0;
+            Intake=0.0;
 
+      */
 
 
         // Send calculated power to wheels
 
         //send power to other motors
-        launchLeft.setPower(shoot);
+        launchLeft.setPower(-shoot);
         launchRight.setPower(shoot);
-        intake.setPower(Intake);
+       // intake.setPower(Intake);
         prevY = gamepad2.y;
         prevA = gamepad2.a;
 

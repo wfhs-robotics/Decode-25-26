@@ -29,6 +29,8 @@
 
 package org.firstinspires.ftc.teamcode.drive;
 
+import android.telephony.TelephonyScanManager;
+
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -67,8 +69,13 @@ public class Drive extends OpMode
     private  DcMotor revolver = null;
     private  DcMotor intake = null;
     private Servo wrist = null;
+    private Servo intakeArm=null;
     boolean prevA = false;
     boolean prevY = false;
+    boolean prevX = false;
+    boolean prevB = false;
+    boolean noprevB= false;
+
 
 
     private HuskyLens huskyLens;
@@ -84,13 +91,17 @@ public class Drive extends OpMode
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        leftDrive  = hardwareMap.get(DcMotor.class, "left_drive");
-        rightDrive = hardwareMap.get(DcMotor.class, "right_drive");
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "left_front_drive");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+        leftDrive  = hardwareMap.get(DcMotor.class, "left drive");
+        rightDrive = hardwareMap.get(DcMotor.class, "right drive");
+        leftFrontDrive  = hardwareMap.get(DcMotor.class, "left front drive");
+        rightFrontDrive = hardwareMap.get(DcMotor.class, "right front drive");
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
         intake = hardwareMap.get(DcMotor.class, "intake");
+        revolver =hardwareMap.get(DcMotor.class, "revolver");
+        wrist =hardwareMap.get(Servo.class, "wrist");
+        intakeArm =hardwareMap.get(Servo.class, "intakeArm");
+        revolver.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // To drive forward, most robots need the motor on one side to be reversed, because the axles point in opposite directions.
         // Pushing the left stick forward MUST make robot go forward. So adjust these two lines based on your first test drive.
@@ -99,6 +110,7 @@ public class Drive extends OpMode
         rightDrive.setDirection(DcMotor.Direction.FORWARD);
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
+
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -122,6 +134,8 @@ public class Drive extends OpMode
     /*
      * Code to run REPEATEDLY after the driver hits START but before they hit STOP
      */
+    //int servo
+
     @Override
     public void loop() {
         // Setup variables
@@ -132,6 +146,21 @@ public class Drive extends OpMode
         double strafe;
         double shoot;
         double Intake;
+        double Revolver;
+        double Pos1=0;
+        double Pos2=112;
+        double Pos3=235;
+        double tolerance=4.0;
+        double TPR = 384.5; //Ticks per rot
+
+        int revolverPos =revolver.getCurrentPosition();
+        // convert TPR to degrees
+        double revolverCurentPos = revolverPos % TPR;
+       if (revolverCurentPos < 0) revolverCurentPos += TPR; //fixes negative values
+
+        //convert to angle
+        double angle =(revolverCurentPos / TPR) *360.0;
+
 
 
 
@@ -147,18 +176,52 @@ public class Drive extends OpMode
         frontRightPower   = Range.clip(drive*.9 - turn*.9 + strafe*.9, -1.0, 1.0) ;
 
         //shoot the artifacts
-        if(gamepad2.a && gamepad2.a != prevA)
-            shoot=1;
+        if(gamepad2.a)
+            shoot=-.75;
         else
             shoot=0;
 
         //intake
-        if(gamepad2.y && gamepad2.y != prevY)
-            Intake=1;
+        if(gamepad2.y)
+            Intake=-1;
         else
             Intake=0;
+        //revolver
+        if(gamepad2.x)
+            Revolver=.1;
+        else
+            Revolver =0;
+        //if the revolver is in the right place then the servo will activate
+        if (gamepad2.left_bumper &&
+            (Math.abs(angle - Pos1) < tolerance ||
+            Math.abs(angle - Pos2) < tolerance ||
+            Math.abs(angle - Pos3) <tolerance))
+        intakeArm.setPosition(.4);
+        else
+            intakeArm.setPosition(0);
+
+        //toggle logic
+        if(gamepad2.b && !prevB) {
+            noprevB = !noprevB;
+            ;
+        }
+        prevB=gamepad2.b;
+
+        //launch angle
+        if(noprevB)
+            wrist.setPosition(1);
+        else
+            wrist.setPosition(.55);
 
 
+
+
+
+
+        //toggle buttons
+        prevY = gamepad2.y;
+        prevA = gamepad2.a;
+        prevX = gamepad2.x;
 
         // Send calculated power to wheels
         leftDrive.setPower(leftPower);
@@ -167,18 +230,25 @@ public class Drive extends OpMode
         rightFrontDrive.setPower(frontRightPower);
         //send power to other motors
         launchLeft.setPower(shoot);
-        launchRight.setPower(shoot);
+        launchRight.setPower(-shoot);
         intake.setPower(Intake);
-        prevY = gamepad2.y;
-        prevA = gamepad2.a;
+        revolver.setPower(Revolver);
 
 
 
 
 
+
+
+
+        //show pos of revolver on Driver Hub
+    telemetry.addData("revolverPos",angle);
+    //show wrist pos
+        telemetry.addData("wristPos", wrist.getPosition());
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
+        telemetry.update();
 
 
     }

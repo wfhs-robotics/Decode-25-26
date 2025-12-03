@@ -40,6 +40,7 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcontroller.external.samples.SensorColor;
@@ -75,15 +76,20 @@ public class Drive extends OpMode
     private  DcMotor intake = null;
     private Servo wrist = null;
     private Servo intakeArm=null;
+    private RevColorSensorV3 color;
     boolean prevA = false;
     boolean prevY = false;
     boolean prevX = false;
     boolean prevB = false;
     boolean noprevB= false;
+    boolean prevyRightStick =false;
+    boolean noPrevRightStick =false;
     //revolver variables
-    double Pos1=0;
-    double Pos2=112;
-    double Pos3=235;
+    double Pos1=296;
+    double Pos2=54;
+    double Pos3=171;
+    boolean homed = false;
+    boolean moveing = false;
     double tolerance=6.0;
     float gain = 2;
     double TPR = 384.5; //Ticks per rot
@@ -105,17 +111,17 @@ public class Drive extends OpMode
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        leftDrive  = hardwareMap.get(DcMotor.class, "left drive");
-        rightDrive = hardwareMap.get(DcMotor.class, "right drive");
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "left front drive");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right front drive");
+        leftDrive  = hardwareMap.get(DcMotor.class, "leftRear");
+        rightDrive = hardwareMap.get(DcMotor.class, "rightRear");
+        leftFrontDrive  = hardwareMap.get(DcMotor.class, "leftFront");
+        rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
         intake = hardwareMap.get(DcMotor.class, "intake");
         revolver =hardwareMap.get(DcMotor.class, "revolver");
         wrist =hardwareMap.get(Servo.class, "wrist");
         intakeArm =hardwareMap.get(Servo.class, "intakeArm");
-        colorSensor = hardwareMap.get(NormalizedColorSensor.class, "color");
+        color = hardwareMap.get(RevColorSensorV3.class, "color");
         // If possible, turn the light on in the beginning (it might already be on anyway,
         // we just make sure it is if we can).
         if (colorSensor instanceof SwitchableLight) {
@@ -171,57 +177,70 @@ public class Drive extends OpMode
         double shoot;
         double Intake;
         double Revolver;
+        double scale = 2.0;
+        int g = (int) (color.green() * scale);
+        int r = (int) (color.red() * scale);
+        int b = (int) (color.blue() * scale);
+        int a = color.alpha();
+
+        boolean isWhite = (r > 150 && g > 150 && b > 150) || (a > 200);
+
+        if (isWhite && !homed) {
+            //Zero the encoder
+            revolver.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+            //return to normal
+            revolver.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            homed = true;
+        }
 
         final float[] hsvValues = new float[3];
 
         //colors
 
 
-
-        int revolverPos =revolver.getCurrentPosition();
+        int revolverPos = revolver.getCurrentPosition();
         // convert TPR to degrees
         double revolverCurentPos = revolverPos % TPR;
-       if (revolverCurentPos < 0) revolverCurentPos += TPR; //fixes negative values
+        if (revolverCurentPos < 0) revolverCurentPos += TPR; //fixes negative values
 
         //convert to angle
-    double angle =(revolverCurentPos / TPR) *360.0;
-
-
+        double angle = (revolverCurentPos / TPR) * 360.0;
 
 
         // POV Mode uses left stick to go forward, and right stick to turn.
         // - This uses basic math to combine motions and is easier to drive straight.
         //
         double drive = -gamepad1.left_stick_y;
-        double turn  =  gamepad1.right_stick_x;
-         strafe = gamepad1.left_stick_x;
-        frontLeftPower    = Range.clip(drive *.9 + turn*.9 - strafe*.9, -1.0, 1.0) ;
-        leftPower    = Range.clip(drive*.9 + turn*.9 + strafe*.9, -1.0, 1.0) ;
-        rightPower   = Range.clip(drive*.9 - turn*.9 - strafe*.9, -1.0, 1.0) ;
-        frontRightPower   = Range.clip(drive*.9 - turn*.9 + strafe*.9, -1.0, 1.0) ;
+        double turn = gamepad1.right_stick_x;
+        strafe = gamepad1.left_stick_x;
+        frontLeftPower = Range.clip(drive * .9 + turn * .9 - strafe * .9, -1.0, 1.0);
+        leftPower = Range.clip(drive * .9 + turn * .9 + strafe * .9, -1.0, 1.0);
+        rightPower = Range.clip(drive * .9 - turn * .9 - strafe * .9, -1.0, 1.0);
+        frontRightPower = Range.clip(drive * .9 - turn * .9 + strafe * .9, -1.0, 1.0);
 
         //shoot the artifacts
-        if(gamepad2.a)
-            shoot=-.75;
+        if (gamepad2.a)
+            shoot = -.75;
         else
-            shoot=0;
+            shoot = 0;
 
         //intake
-        if(gamepad2.y)
-            Intake=-1;
+        if (gamepad2.y)
+            Intake = -1;
         else
-            Intake=0;
+            Intake = 0;
         //revolver colorSensor logic
 
         //revolver
 
         //revolver pos selection
         if (gamepad2.left_bumper)
-            Revolver=-0.1;
+            Revolver = -0.1;
         else if (gamepad2.right_bumper) {
-            Revolver=.1;
-        }
-        else Revolver=0;
+            Revolver = .1;
+        } else Revolver = 0;
 
 
         //if the revolver is in the right place then the servo will activate
@@ -238,106 +257,107 @@ public class Drive extends OpMode
         else
             intakeArm.setPosition(0);
         //toggle logic
-        if(gamepad2.b && !prevB) {
+        if (gamepad2.b && !prevB) {
             noprevB = !noprevB;
-            ;
+
         }
-        prevB=gamepad2.b;
+        prevB = gamepad2.b;
 
         //launch angle
-        if(noprevB)
+        if (noprevB)
             wrist.setPosition(1);
         else
             wrist.setPosition(.55);
 
-        if(gamepad2.right_bumper);
-
-
-
-
-
-
-
-
-        //toggle buttons
-        prevY = gamepad2.y;
-        prevA = gamepad2.a;
-        prevX = gamepad2.x;
-
-        // Send calculated power to wheels
-        leftDrive.setPower(leftPower);
-        rightDrive.setPower(rightPower);
-        leftFrontDrive.setPower(frontLeftPower);
-        rightFrontDrive.setPower(frontRightPower);
-        //send power to other motors
-        launchLeft.setPower(shoot);
-        launchRight.setPower(-shoot);
-        intake.setPower(Intake);
-       revolver.setPower(Revolver);
-
-        //change gain of color
-
-        telemetry.addLine("Hold the A button on gamepad 1 to increase gain, or B to decrease it.\n");
-        telemetry.addLine("Higher gain values mean that the sensor will report larger numbers for Red, Green, and Blue, and Value\n");
-
-        // Update the gain value if either of the A or B gamepad buttons is being held
-        if (gamepad1.a) {
-            // Only increase the gain by a small amount, since this loop will occur multiple times per second.
-            gain += 0.005;
-        } else if (gamepad1.b && gain > 1) { // A gain of less than 1 will make the values smaller, which is not helpful.
-            gain -= 0.005;
+        if (gamepad2.right_stick_button) {
+            moveing=true;
+            Revolver = 0.05;
         }
 
-        //detect color
-        // Get the normalized colors from the sensor
-        NormalizedRGBA colors = colorSensor.getNormalizedColors();
+        if (moveing) {
+            if (revolverPos >= Pos1 && revolverPos <= Pos1 + 20 ||
+                    revolverPos >= Pos2 && revolverPos <= Pos2 + 20 ||
+                    revolverPos >= Pos3 && revolverPos <= Pos3 + 20){
+                Revolver=0;
+                moveing=false;}
+        }
 
-        /* Use telemetry to display feedback on the driver station. We show the red, green, and blue
-         * normalized values from the sensor (in the range of 0 to 1), as well as the equivalent
-         * HSV (hue, saturation and value) values. See http://web.archive.org/web/20190311170843/https://infohost.nmt.edu/tcc/help/pubs/colortheory/web/hsv.html
-         * for an explanation of HSV color. */
+            //toggle buttons
+            prevY = gamepad2.y;
+            prevA = gamepad2.a;
+            prevX = gamepad2.x;
 
-        // Update the hsvValues array by passing it to Color.colorToHSV()
-        Color.colorToHSV(colors.toColor(), hsvValues);
+            // Send calculated power to wheels
+            leftDrive.setPower(leftPower);
+            rightDrive.setPower(rightPower);
+            leftFrontDrive.setPower(frontLeftPower);
+            rightFrontDrive.setPower(frontRightPower);
+            //send power to other motors
+            launchLeft.setPower(shoot);
+            launchRight.setPower(-shoot);
+            intake.setPower(Intake);
+            revolver.setPower(Revolver);
 
-        telemetry.addLine()
-                .addData("Red", "%.3f", colors.red)
-                .addData("Green", "%.3f", colors.green)
-                .addData("Blue", "%.3f", colors.blue);
-        telemetry.addLine()
-                .addData("Hue", "%.3f", hsvValues[0])
-                .addData("Saturation", "%.3f", hsvValues[1])
-                .addData("Value", "%.3f", hsvValues[2]);
-        telemetry.addData("Alpha", "%.3f", colors.alpha);
+            //change gain of color
 
-        // Show the gain value via telemetry
-        telemetry.addData("Gain", gain);
+            telemetry.addLine("Hold the A button on gamepad 1 to increase gain, or B to decrease it.\n");
+            telemetry.addLine("Higher gain values mean that the sensor will report larger numbers for Red, Green, and Blue, and Value\n");
 
-        // Tell the sensor our desired gain value (normally you would do this during initialization,
-        // not during the loop)
-        colorSensor.setGain(gain);
+            // Update the gain value if either of the A or B gamepad buttons is being held
+            if (gamepad1.a) {
+                // Only increase the gain by a small amount, since this loop will occur multiple times per second.
+                gain += 0.005;
+            } else if (gamepad1.b && gain > 1) { // A gain of less than 1 will make the values smaller, which is not helpful.
+                gain -= 0.005;
+            }
+
+            //detect color
+            // Get the normalized colors from the sensor
+            NormalizedRGBA colors = color.getNormalizedColors();
+
+            /* Use telemetry to display feedback on the driver station. We show the red, green, and blue
+             * normalized values from the sensor (in the range of 0 to 1), as well as the equivalent
+             * HSV (hue, saturation and value) values. See http://web.archive.org/web/20190311170843/https://infohost.nmt.edu/tcc/help/pubs/colortheory/web/hsv.html
+             * for an explanation of HSV color. */
+
+            // Update the hsvValues array by passing it to Color.colorToHSV()
+            Color.colorToHSV(colors.toColor(), hsvValues);
+
+            telemetry.addLine()
+                    .addData("Red", r)
+                    .addData("Green", g)
+                    .addData("Blue", b);
+            telemetry.addLine()
+                    .addData("Hue", hsvValues[0])
+                    .addData("Saturation", hsvValues[1])
+                    .addData("Value", hsvValues[2]);
+            telemetry.addData("Alpha", a);
+
+            // Show the gain value via telemetry
+            telemetry.addData("Gain", gain);
+
+            // Tell the sensor our desired gain value (normally you would do this during initialization,
+            // not during the loop)
+            color.setGain(gain);
 
 
+            //show pos of revolver on Driver Hub
+            telemetry.addData("revolverPos", angle);
+            //show wrist pos
+            telemetry.addData("wristPos", wrist.getPosition());
+            // Show the elapsed game time and wheel power.
+            telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
+            telemetry.update();
 
 
+        }
 
-        //show pos of revolver on Driver Hub
-    telemetry.addData("revolverPos",angle);
-    //show wrist pos
-        telemetry.addData("wristPos", wrist.getPosition());
-        // Show the elapsed game time and wheel power.
-        telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-        telemetry.update();
-
+        /*
+         * Code to run ONCE after the driver hits STOP
+         */
+        @Override
+        public void stop () {
+        }
 
     }
-
-    /*
-     * Code to run ONCE after the driver hits STOP
-     */
-    @Override
-    public void stop() {
-    }
-
-}

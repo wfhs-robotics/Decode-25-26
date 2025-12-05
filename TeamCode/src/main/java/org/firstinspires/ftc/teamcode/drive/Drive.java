@@ -36,18 +36,13 @@ import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
-import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
-import com.acmerobotics.roadrunner.geometry.Pose2d;
-
-import com.qualcomm.robotcore.util.Range;
-
-import org.firstinspires.ftc.robotcontroller.external.samples.SensorColor;
+import com.acmerobotics.dashboard.config.Config;
 
 
 /*
@@ -65,6 +60,7 @@ import org.firstinspires.ftc.robotcontroller.external.samples.SensorColor;
  */
 
 @TeleOp(name="Drive", group="Iterative OpMode")
+@Config
 //@Disabled
 public class Drive extends OpMode
 {
@@ -74,7 +70,7 @@ public class Drive extends OpMode
 
     private  DcMotor launchLeft = null;
     private  DcMotor launchRight = null;
-    private  DcMotor revolver = null;
+    private  DcMotorEx revolver = null;
     private  DcMotor intake = null;
     private Servo wrist = null;
     private Servo intakeArm=null;
@@ -84,16 +80,30 @@ public class Drive extends OpMode
     boolean prevX = false;
     boolean prevB = false;
     boolean noprevB= false;
-    boolean prevyRightStick =false;
+    boolean prevRightStick =false;
     boolean noPrevRightStick =false;
     //revolver variables
-    double Pos1=296;
-    double Pos2=54;
-    double Pos3=171;
+    public static int Pos1=80;
+    boolean prevLBumper=false;
+    boolean prevRBumper=false;
+
+    public static int Pos2=205;
+    public static int Pos3=350;
+    public static int Alt1 = 20;
+    public static int Alt2 = 150;
+    public static int Alt3 = 280;
+    public  static int V =1000;
+
+    int posIndex = 0;
+    int modeIndex = 0;
+
+    boolean prevLB = false;
+    boolean prevRB = false;
+    double posMath =0;
     boolean homed = false;
     boolean moveing = false;
     double tolerance=6.0;
-    float gain = 2;
+
     double TPR = 384.5; //Ticks per rot
 
 
@@ -118,17 +128,15 @@ public class Drive extends OpMode
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
         intake = hardwareMap.get(DcMotor.class, "intake");
-        revolver =hardwareMap.get(DcMotor.class, "revolver");
+        revolver =hardwareMap.get(DcMotorEx.class, "revolver");
         wrist =hardwareMap.get(Servo.class, "wrist");
         intakeArm =hardwareMap.get(Servo.class, "intakeArm");
         color = hardwareMap.get(RevColorSensorV3.class, "color");
         // If possible, turn the light on in the beginning (it might already be on anyway,
         // we just make sure it is if we can).
-        if (colorSensor instanceof SwitchableLight) {
-            ((SwitchableLight)colorSensor).enableLight(true);
-        }
 
         revolver.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
 
 
 
@@ -184,17 +192,20 @@ public class Drive extends OpMode
         int b = (int) (color.blue() * scale);
         int a = color.alpha();
 
-        boolean isWhite = (r > 150 && g > 150 && b > 150) || (a > 200);
 
-        if (isWhite && !homed) {
-            //Zero the encoder
-            revolver.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
-            //return to normal
-            revolver.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-            homed = true;
-        }
+//        boolean isWhite = (r > 150 && g > 150 && b > 150) || (a > 200);
+//
+//        if (isWhite && !homed) {
+//            //Zero the encoder
+//            revolver.setTargetPosition(revolver.getCurrentPosition());
+//            revolver.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+//
+//            //return to normal
+//            revolver.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//
+//            homed = true;
+//        }
 
         final float[] hsvValues = new float[3];
 
@@ -241,16 +252,63 @@ public class Drive extends OpMode
 
         //revolver
 
-        //revolver pos selection
-        if (gamepad2.left_bumper){
-            //revolver.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        revolver.setPower(-0.1);}
-         else if(gamepad2.right_bumper) {
-          //  revolver.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            revolver.setPower(0.1);
-        } else {//revolver.setTargetPosition(revolver.getCurrentPosition());
-        //revolver.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        revolver.setPower(0);}
+
+
+
+        revolver.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+       // revolver pos selection
+        revolver.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // ========= A BUTTON TOGGLES MODES =========
+        if (gamepad2.right_stick_button && !prevRightStick) {
+            modeIndex = 1 - modeIndex;   // toggles 0 ↔ 1
+            posIndex = 0;                // resets to first position
+        }
+        prevRightStick = gamepad2.right_stick_button;
+
+
+// ========= LB/RB CHANGE POSITIONS (0, 1, 2) =========
+        if (gamepad2.left_bumper && !prevLB) {
+            posIndex++;
+        }
+        if (gamepad2.right_bumper && !prevRB) {
+            posIndex--;
+        }
+
+        prevLB = gamepad2.left_bumper;
+        prevRB = gamepad2.right_bumper;
+
+// wrap around
+        if (posIndex > 2) posIndex = 0;
+        if (posIndex < 0) posIndex = 2;
+
+
+// ========= SELECT TARGET POSITION BASED ON MODE =========
+        int target = 0;
+
+        if (modeIndex == 0) {
+            // original 3 positions
+            if (posIndex == 0) target = Pos1;
+            if (posIndex == 1) target = Pos2;
+            if (posIndex == 2) target = Pos3;
+        } else {
+            // alternate 3 positions
+            if (posIndex == 0) target = Alt1;
+            if (posIndex == 1) target = Alt2;
+            if (posIndex == 2) target = Alt3;
+        }
+
+// ========= APPLY MOVEMENT =========
+        revolver.setTargetPosition(target);
+        revolver.setPower(0.4);
+        revolver.setVelocity(V);
+
+// stop when close
+        if (Math.abs(revolver.getCurrentPosition() - target) < 8) {
+            revolver.setPower(0);
+        }
+
+
 
 
         //if the revolver is in the right place then the servo will activate
@@ -265,7 +323,7 @@ public class Drive extends OpMode
         if (gamepad2.x)
             intakeArm.setPosition(.4);
         else
-            intakeArm.setPosition(0);
+            intakeArm.setPosition(.05);
 
 
         //toggle logic
@@ -281,17 +339,17 @@ public class Drive extends OpMode
         else
             wrist.setPosition(.5);
 
-        if (gamepad2.right_stick_button) {
-            moveing = true;
-            Revolver = 0.02;
-        }
-        if (moveing) {
-            if ((revolverPos >= Pos1) && (revolverPos <= Pos1 + 30) ||
-                    (revolverPos >= Pos2) && (revolverPos <= Pos2 + 30) ||
-                    (revolverPos >= Pos3) && (revolverPos <= Pos3 + 30)){
-                revolver.setPower(-0.1);
-                moveing=false;}
-        }
+//        if (gamepad2.right_stick_button) {
+//            moveing = true;
+//            Revolver = 0.02;
+//        }
+//        if (moveing) {
+//            if ((revolverPos >= Pos1) && (revolverPos <= Pos1 + 30) ||
+//                    (revolverPos >= Pos2) && (revolverPos <= Pos2 + 30) ||
+//                    (revolverPos >= Pos3) && (revolverPos <= Pos3 + 30)){
+//                revolver.setPower(-0.1);
+//                moveing=false;}
+//        }
 
             //toggle buttons
             prevY = gamepad2.y;
@@ -312,12 +370,6 @@ public class Drive extends OpMode
             telemetry.addLine("Higher gain values mean that the sensor will report larger numbers for Red, Green, and Blue, and Value\n");
 
             // Update the gain value if either of the A or B gamepad buttons is being held
-            if (gamepad1.a) {
-                // Only increase the gain by a small amount, since this loop will occur multiple times per second.
-                gain += 0.005;
-            } else if (gamepad1.b && gain > 1) { // A gain of less than 1 will make the values smaller, which is not helpful.
-                gain -= 0.005;
-            }
 
             //detect color
             // Get the normalized colors from the sensor
@@ -342,11 +394,7 @@ public class Drive extends OpMode
             telemetry.addData("Alpha", a);
 
             // Show the gain value via telemetry
-            telemetry.addData("Gain", gain);
 
-            // Tell the sensor our desired gain value (normally you would do this during initialization,
-            // not during the loop)
-            color.setGain(gain);
 
 
             //show pos of revolver on Driver Hub
@@ -355,6 +403,7 @@ public class Drive extends OpMode
             telemetry.addData("wristPos", wrist.getPosition());
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("posMath", posMath);
             telemetry.update();
 
 

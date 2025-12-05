@@ -31,6 +31,7 @@ package org.firstinspires.ftc.teamcode.drive;
 
 import android.graphics.Color;
 
+import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -41,6 +42,9 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
+import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import com.acmerobotics.roadrunner.geometry.Pose2d;
+
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcontroller.external.samples.SensorColor;
@@ -66,10 +70,8 @@ public class Drive extends OpMode
 {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftDrive = null;
-    private DcMotor rightDrive = null;
-    private  DcMotor leftFrontDrive = null;
-    private DcMotor rightFrontDrive = null;
+    private SampleMecanumDrive drive;
+
     private  DcMotor launchLeft = null;
     private  DcMotor launchRight = null;
     private  DcMotor revolver = null;
@@ -111,10 +113,8 @@ public class Drive extends OpMode
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        leftDrive  = hardwareMap.get(DcMotor.class, "leftRear");
-        rightDrive = hardwareMap.get(DcMotor.class, "rightRear");
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "leftFront");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
+        drive = new SampleMecanumDrive(hardwareMap);
+
         launchLeft = hardwareMap.get(DcMotor.class, "launchleft");
         launchRight = hardwareMap.get(DcMotor.class, "launchright");
         intake = hardwareMap.get(DcMotor.class, "intake");
@@ -135,10 +135,10 @@ public class Drive extends OpMode
         // To drive forward, most robots need the motor on one side to be reversed, because the axles point in opposite directions.
         // Pushing the left stick forward MUST make robot go forward. So adjust these two lines based on your first test drive.
         // Note: The settings here assume direct drive on left and right wheels.  Gear Reduction or 90 Deg drives may require direction flips
-        leftDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightDrive.setDirection(DcMotor.Direction.FORWARD);
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
+//        leftDrive.setDirection(DcMotor.Direction.REVERSE);
+//        rightDrive.setDirection(DcMotor.Direction.FORWARD);
+//        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+//        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
 
 
         // Tell the driver that initialization is complete.
@@ -174,6 +174,7 @@ public class Drive extends OpMode
         double frontRightPower;
         double rightPower;
         double strafe;
+        double RT;
         double shoot;
         double Intake;
         double Revolver;
@@ -212,16 +213,21 @@ public class Drive extends OpMode
         // POV Mode uses left stick to go forward, and right stick to turn.
         // - This uses basic math to combine motions and is easier to drive straight.
         //
-        double drive = -gamepad1.left_stick_y;
-        double turn = gamepad1.right_stick_x;
-        strafe = gamepad1.left_stick_x;
-        frontLeftPower = Range.clip(drive * .9 + turn * .9 - strafe * .9, -1.0, 1.0);
-        leftPower = Range.clip(drive * .9 + turn * .9 + strafe * .9, -1.0, 1.0);
-        rightPower = Range.clip(drive * .9 - turn * .9 - strafe * .9, -1.0, 1.0);
-        frontRightPower = Range.clip(drive * .9 - turn * .9 + strafe * .9, -1.0, 1.0);
+        drive.setWeightedDrivePower(
+                new Pose2d(
+                        -gamepad1.left_stick_y,
+                        -gamepad1.left_stick_x,
+                        -gamepad1.right_stick_x
+                )
+        );
 
         //shoot the artifacts
-        if (gamepad2.a)
+        if(gamepad2.right_trigger==0)
+            RT=0;
+        else
+            RT=1;
+
+        if (RT==1)
             shoot = -.75;
         else
             shoot = 0;
@@ -236,26 +242,32 @@ public class Drive extends OpMode
         //revolver
 
         //revolver pos selection
-        if (gamepad2.left_bumper)
-            Revolver = -0.1;
-        else if (gamepad2.right_bumper) {
-            Revolver = .1;
-        } else Revolver = 0;
+        if (gamepad2.left_bumper){
+            //revolver.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        revolver.setPower(-0.1);}
+         else if(gamepad2.right_bumper) {
+          //  revolver.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            revolver.setPower(0.1);
+        } else {//revolver.setTargetPosition(revolver.getCurrentPosition());
+        //revolver.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        revolver.setPower(0);}
 
 
         //if the revolver is in the right place then the servo will activate
-       /* if (gamepad2.x &&
+      /*  if (gamepad2.x &&
             (Math.abs(angle - Pos1) < tolerance ||
             Math.abs(angle - Pos2) < tolerance ||
             Math.abs(angle - Pos3) <tolerance))
         intakeArm.setPosition(.4);
         else
-            intakeArm.setPosition(0);
-*/
+            intakeArm.setPosition(0);*/
+
         if (gamepad2.x)
             intakeArm.setPosition(.4);
         else
             intakeArm.setPosition(0);
+
+
         //toggle logic
         if (gamepad2.b && !prevB) {
             noprevB = !noprevB;
@@ -267,18 +279,17 @@ public class Drive extends OpMode
         if (noprevB)
             wrist.setPosition(1);
         else
-            wrist.setPosition(.55);
+            wrist.setPosition(.5);
 
         if (gamepad2.right_stick_button) {
-            moveing=true;
-            Revolver = 0.05;
+            moveing = true;
+            Revolver = 0.02;
         }
-
         if (moveing) {
-            if (revolverPos >= Pos1 && revolverPos <= Pos1 + 20 ||
-                    revolverPos >= Pos2 && revolverPos <= Pos2 + 20 ||
-                    revolverPos >= Pos3 && revolverPos <= Pos3 + 20){
-                Revolver=0;
+            if ((revolverPos >= Pos1) && (revolverPos <= Pos1 + 30) ||
+                    (revolverPos >= Pos2) && (revolverPos <= Pos2 + 30) ||
+                    (revolverPos >= Pos3) && (revolverPos <= Pos3 + 30)){
+                revolver.setPower(-0.1);
                 moveing=false;}
         }
 
@@ -288,15 +299,12 @@ public class Drive extends OpMode
             prevX = gamepad2.x;
 
             // Send calculated power to wheels
-            leftDrive.setPower(leftPower);
-            rightDrive.setPower(rightPower);
-            leftFrontDrive.setPower(frontLeftPower);
-            rightFrontDrive.setPower(frontRightPower);
+
             //send power to other motors
             launchLeft.setPower(shoot);
             launchRight.setPower(-shoot);
             intake.setPower(Intake);
-            revolver.setPower(Revolver);
+            //revolver.setPower(Revolver);
 
             //change gain of color
 
@@ -347,7 +355,6 @@ public class Drive extends OpMode
             telemetry.addData("wristPos", wrist.getPosition());
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
             telemetry.update();
 
 

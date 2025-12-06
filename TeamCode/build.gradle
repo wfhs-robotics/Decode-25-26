@@ -25,4 +25,11 @@ android {
 
 dependencies {
     implementation project(':FtcRobotController')
+
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7'
+    implementation 'com.acmerobotics.roadrunner:core:0.5.6'
+    implementation 'androidx.xr.runtime:runtime:1.0.0-alpha05'
+    implementation 'com.android.extensions.xr:extensions-xr:1.0.0'
+    implementation 'com.google.ar:core:1.50.0'
 }

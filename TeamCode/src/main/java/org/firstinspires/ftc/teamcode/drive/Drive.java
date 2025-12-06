@@ -83,16 +83,20 @@ public class Drive extends OpMode
     boolean prevRightStick =false;
     boolean noPrevRightStick =false;
     //revolver variables
-    public static int Pos1=80;
+    public static int Pos1=50;
     boolean prevLBumper=false;
     boolean prevRBumper=false;
 
-    public static int Pos2=205;
-    public static int Pos3=350;
-    public static int Alt1 = 20;
-    public static int Alt2 = 150;
-    public static int Alt3 = 280;
-    public  static int V =1000;
+    public static int Pos2=200;
+    public static int Pos3=315;
+    public static int Alt1 = 200;
+    public static int Alt2 = 120;
+    public static int Alt3 = 240;
+    public  static int V =1500;
+    public  static double wP1 = .9;
+    public  static double wP2 = .45;
+    public  static double Wee = .8;
+    public  static double P = .5;
 
     int posIndex = 0;
     int modeIndex = 0;
@@ -239,7 +243,7 @@ public class Drive extends OpMode
             RT=1;
 
         if (RT==1)
-            shoot = -.75;
+            shoot = -Wee;
         else
             shoot = 0;
 
@@ -300,7 +304,7 @@ public class Drive extends OpMode
 
 // ========= APPLY MOVEMENT =========
         revolver.setTargetPosition(target);
-        revolver.setPower(0.4);
+        revolver.setPower(P);
         revolver.setVelocity(V);
 
 // stop when close
@@ -335,9 +339,9 @@ public class Drive extends OpMode
 
         //launch angle
         if (noprevB)
-            wrist.setPosition(1);
+            wrist.setPosition(wP1);
         else
-            wrist.setPosition(.5);
+            wrist.setPosition(wP2);
 
 //        if (gamepad2.right_stick_button) {
 //            moveing = true;
